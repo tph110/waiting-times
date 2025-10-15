@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Waiting Times</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status-red {
+            background-color: #ff4d4d;
+            color: white;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            display: inline-block;
+            width: 80px;
+        }
+        .status-green {
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            display: inline-block;
+            width: 80px;
+        }
+        .status-yellow {
+            background-color: #ffeb3b;
+            color: black;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            display: inline-block;
+            width: 80px;
+        }
+        #loading {
+            text-align: center;
+            font-size: 18px;
+            color: #555;
+        }
+        #error {
+            text-align: center;
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Doctor Waiting Times</h1>
+    <div id="loading">Loading data...</div>
+    <div id="error" style="display: none;"></div>
+    <table id="waiting-times-table">
+        <thead>
+            <tr>
+                <th>Doctor</th>
+                <th>Status</th>
+                <th>Wait (minutes)</th>
+            </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+    </table>
+
+    <script>
+        // Your Google Sheet's published CSV URL
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR6isKQeI8cgW7iaTV4KfnUugomy_4cHq-RcpqTDj1haz0uJFqIYi08khnhm5JuudGXxD4hh117g0GR/pub?output=csv';
+
+        async function fetchData() {
+            try {
+                const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error('Failed to fetch data from Google Sheet');
+                const csvText = await response.text();
+
+                // Parse CSV, handling quoted fields and commas
+                const rows = csvText.split('\n').map(row => {
+                    const cols = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < row.length; i++) {
+                        if (row[i] === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (row[i] === ',' && !inQuotes) {
+                            cols.push(current.trim());
+                            current = '';
+                        } else {
+                            current += row[i];
+                        }
+                    }
+                    cols.push(current.trim());
+                    return cols;
+                });
+
+                // Populate the table, skipping the header row
+                const tableBody = document.getElementById('table-body');
+                tableBody.innerHTML = ''; // Clear loading message
+
+                for (let i = 1; i < rows.length; i++) {
+                    const [doctor, status, wait] = rows[i];
+                    if (doctor && status && wait) {
+                        const normalizedStatus = status.toLowerCase();
+                        if (['red', 'green', 'yellow'].includes(normalizedStatus)) {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${doctor}</td>
+                                <td><span class="status-${normalizedStatus}">${status}</span></td>
+                                <td>${wait}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        }
+                    }
+                }
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = 'Error loading data: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // Fetch data when the page loads
+        window.onload = fetchData;
+    </script>
+</body>
+</html>
